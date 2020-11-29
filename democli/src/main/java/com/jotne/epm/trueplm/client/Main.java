@@ -66,7 +66,7 @@ public class Main {
 		BreakdownElementSearchResultInfo element = searchForBreakdownElements(token, projInfo.getName(), PROJECT_REPO, userType);
 		retrieveSensorData(token, PROJECT_REPO, projInfo.getName(), element.getBkdnElemInfo().getInstanceId());
 		
-		//exportProjectAsDEXPackage(token, "TruePLMprojectsRep", projInfo.getName(), "Bike_ex.zip");
+		exportProjectAsDEXPackage(token, "TruePLMprojectsRep", projInfo.getName(), "Bike.zip");
 						
 		logout(token);
 	}
@@ -103,12 +103,28 @@ public class Main {
 	LoginInfo getUser(String token, String user) throws ApiException {
 		AdminControllerApi api = new AdminControllerApi();
 		List<LoginInfo> res = api.getUserInfoUsingGET(token);
-		return res.get(0); // There should be only one element
+		LoginInfo usr = res.get(0); 
+		
+		System.out.print("User:\t");
+		System.out.println(usr.getUserName());
+		System.out.print("Nnme:\t");
+		System.out.println(usr.getRealName());
+		System.out.print("E-mail:\t");
+		System.out.println(usr.getUserEmail());
+		return usr; // There should be only one element
 	}
 	
 	List<UsersProjectInfo> getProjectsForUser(String token) throws ApiException {
 		AdminControllerApi api = new AdminControllerApi();
 		List<UsersProjectInfo> res = api.getUserProjectsUsingGET(token);
+		
+		if (res != null) {
+			System.out.println("\nAvailable projects:");
+			for (UsersProjectInfo p : res) {
+				System.out.println(p.getInProject().getName());
+			}
+		}
+		
 		return res;
 	}
 	
@@ -129,10 +145,11 @@ public class Main {
 			// print out metadata of not more than certain number of documents
 			int index = 1; // number of found document: 1 .. n 
 			int maxItems = 3; // maximum items to be printed out
+			System.out.println("\nFollowing document are found");
 			for(DataFileSearchResultInfo doc : docs) {
 				System.out.print("#");
 				System.out.print(index);
-				System.out.println(".");
+				System.out.print(": ");
 		    	printDocument(doc);
 			    if (index++ > maxItems) {
 			    	System.out.println("... more...");
@@ -143,7 +160,6 @@ public class Main {
 	}
 	
 	void printDocument(DataFileSearchResultInfo obj) {
-		System.out.print("Title: ");
 		System.out.println(obj.getTitle());
 		System.out.print("Type: ");
 		System.out.println(obj.getDataType());
@@ -159,6 +175,16 @@ public class Main {
 		String propertyValue = "13483027";
 		List<BreakdownElementSearchResultInfo> res = api.advancedSearchNodeUsingGET(modelName, repoName, token, userType, null, null, null, "*",
 				null, null, null, limit, nodeID, null, null, "*", Arrays.asList(propertyName), Arrays.asList(propertyValue), null);
+		
+		System.out.println("\nBreakdown elemets found:");
+		for (BreakdownElementSearchResultInfo el : res) {
+			System.out.print("ID: ");
+			System.out.println(el.getBkdnElemInfo().getId());
+			System.out.print("Name: ");
+			System.out.println(el.getBkdnElemInfo().getName());
+			System.out.print("Type: ");
+			System.out.println(el.getBkdnElemInfo().getElementType());
+		}
 		return res.get(0);
 	}
 	
@@ -175,7 +201,7 @@ public class Main {
 		String propertyUri = "urn:rdl:Bike:point list";
 		AggregatedProperty aggrProp = api.getAggrPropUsingGET(modelName, nodeId, propertyUri, repoName, token, from, page, pageSize, to);
 		
-		System.out.println("Sensor data:");
+		System.out.println("\nSensor data:");
 		for (String val : aggrProp.getValues()) {
 			System.out.println(val);
 		}
@@ -183,8 +209,7 @@ public class Main {
 	
 	void exportProjectAsDEXPackage(String token, String repoName, String modelName, String filePath) throws ApiException, FileNotFoundException, IOException {
 		ExchangeControllerApi api = new ExchangeControllerApi();
-		Boolean asStructure = true;
-		FileInfo res = api.exportProjectToDEXUsingGET(modelName, modelName, repoName, token, asStructure);
+		FileInfo res = api.exportProjectToFileUsingGET(modelName, modelName, repoName, token);
 		
 		DataControllerApi dat = new DataControllerApi();
 		ByteArrayResource arr = dat.getFileDataUsingGET("title", res.getSource(), token);
@@ -193,6 +218,8 @@ public class Main {
 			fos.write(arr.getByteArray());
 			//fos.close(); There is no more need for this line since you had created the instance of "fos" inside the try. And this will automatically close the OutputStream
 		}
+		
+		System.out.println("\nExport completed");
 	}
 
 }
