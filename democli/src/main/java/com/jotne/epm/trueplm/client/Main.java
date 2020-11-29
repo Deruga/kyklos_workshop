@@ -3,11 +3,13 @@ package com.jotne.epm.trueplm.client;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Properties;
 
 import com.jotne.demo.ApiException;
 import com.jotne.demo.api.AdminControllerApi;
@@ -27,9 +29,8 @@ import com.jotne.demo.model.UsersProjectInfo;
 
 public class Main {
 
-	static final String loginNane = "azo";
+	static final String loginNane = "azo@jotne.com";
 	static final String group = "sdai-group"; // All TruePLM users belong to the same group.
-	static final String password = "azo";
 	
 	static final String PROJECT_REPO = "TruePLMprojectsRep";
 
@@ -43,6 +44,10 @@ public class Main {
 	
 	void run() throws ApiException, FileNotFoundException, IOException, ParseException {
 		
+		Properties prop = new Properties();
+		InputStream is = getClass().getClassLoader().getResourceAsStream("config.properties");
+		prop.load(is);
+		String password = prop.getProperty("password");
 		String token = login(loginNane, group, password);
 		
 		LoginInfo userInfo = getUser(token, loginNane);
@@ -76,6 +81,9 @@ public class Main {
 		// That is why "localhost" is hardcoded here.
 		// However we may use any publicity available EDM server to connect to 
 		LoginRez res = api.loginSubmitUsingPOST(null, group, password, "9090", "localhost", user);
+		
+		if (res.getError() != null)
+			throw new ApiException("Login error");
 		return res.getToken();
 	}
 	
