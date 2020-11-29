@@ -1,0 +1,1 @@
+java -jar swagger-codegen-cli.jar generate  -i https://demo.jotne.com//EDMtruePLM/v2/api-docs -l java -o demolib --api-package com.jotne.demo.api --model-package com.jotne.demo.model --artifact-id demolib
