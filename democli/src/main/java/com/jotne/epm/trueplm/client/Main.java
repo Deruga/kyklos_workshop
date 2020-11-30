@@ -62,17 +62,17 @@ public class Main {
 		
 		// Search documents and print out meta-data for some of them
 		List<DataFileSearchResultInfo> docs =
-				searchForDocuments(token, projInfo.getName(), userType);
+				searchForDocuments(token, projInfo.getProjectModelId(), userType);
 		if (docs != null && docs.size() > 1) {
 			// download the second one
 			DataFileSearchResultInfo doc = docs.get(1);
-			downloadDocument(token, PROJECT_REPO, projInfo.getName(), doc, userType);
+			downloadDocument(token, PROJECT_REPO, projInfo.getProjectModelId(), doc, userType);
 		}
 		
-		BreakdownElementSearchResultInfo element = searchForBreakdownElements(token, projInfo.getName(), PROJECT_REPO, userType);
-		retrieveSensorData(token, PROJECT_REPO, projInfo.getName(), element.getBkdnElemInfo().getInstanceId());
+		BreakdownElementSearchResultInfo element = searchForBreakdownElements(token, projInfo.getProjectModelId(), PROJECT_REPO, userType);
+		retrieveSensorData(token, PROJECT_REPO, projInfo.getProjectModelId(), element.getBkdnElemInfo().getInstanceId());
 		
-		exportProjectAsDEXPackage(token, "TruePLMprojectsRep", projInfo.getName(), "Bike.zip");
+		exportProjectAsDEXPackage(token, "TruePLMprojectsRep", projInfo.getProjectModelId(), "Bike.zip");
 						
 		logout(token);
 	}
