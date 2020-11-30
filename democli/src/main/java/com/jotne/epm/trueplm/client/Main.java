@@ -61,7 +61,13 @@ public class Main {
 		ProjectInfo projInfo = projects.get(0).getInProject();
 		
 		// Search documents and print out meta-data for some of them
-		searchForDocuments(token, projInfo.getName(), userType);
+		List<DataFileSearchResultInfo> docs =
+				searchForDocuments(token, projInfo.getName(), userType);
+		if (docs != null && docs.size() > 1) {
+			// download the second one
+			DataFileSearchResultInfo doc = docs.get(1);
+			downloadDocument(token, PROJECT_REPO, projInfo.getName(), doc, userType);
+		}
 		
 		BreakdownElementSearchResultInfo element = searchForBreakdownElements(token, projInfo.getName(), PROJECT_REPO, userType);
 		retrieveSensorData(token, PROJECT_REPO, projInfo.getName(), element.getBkdnElemInfo().getInstanceId());
@@ -128,7 +134,7 @@ public class Main {
 		return res;
 	}
 	
-	void searchForDocuments(String token, String modelName, String userType) throws ApiException {
+	List<DataFileSearchResultInfo> searchForDocuments(String token, String modelName, String userType) throws ApiException {
 		DataControllerApi api = new DataControllerApi();
 		String descriptionPattern = "*"; // means any description
 		String titlePattern = "*"; // means any description
@@ -157,6 +163,21 @@ public class Main {
 			    }
 			}
 		}
+		
+		return docs;
+	}
+	
+	void downloadDocument(String token, String repoName, String modelName, DataFileSearchResultInfo doc, String userType) throws ApiException, FileNotFoundException, IOException {
+		DataControllerApi api = new DataControllerApi();
+		FileInfo info = api.getFileVerLinkUsingGET(modelName, "filename", repoName, token, userType, doc.getInstanceId());
+		
+		ByteArrayResource bytes = api.getFileDataUsingGET("filename", info.getSource(), token);
+		
+		try (FileOutputStream fos = new FileOutputStream("filePath.txt")) {
+			fos.write(bytes.getByteArray());
+		}
+		
+		System.out.println("\nExport completed");
 	}
 	
 	void printDocument(DataFileSearchResultInfo obj) {
