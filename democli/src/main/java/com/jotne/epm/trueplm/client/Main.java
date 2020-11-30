@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 import com.jotne.demo.ApiException;
 import com.jotne.demo.api.AdminControllerApi;
@@ -32,6 +33,7 @@ import com.jotne.demo.model.LoginInfo;
 import com.jotne.demo.model.LoginRez;
 import com.jotne.demo.model.ProjectInfo;
 import com.jotne.demo.model.UsersProjectInfo;
+import com.squareup.okhttp.OkHttpClient;
 
 public class Main {
 
@@ -40,8 +42,6 @@ public class Main {
 	
 	static final String PROJECT_REPO = "TruePLMprojectsRep";
 	
-	static final String SERVER_URL = "http://localhost:8080/EDMtruePLM/";
-
 	public static void main(String[] args) {
 		try {
 			new Main().run();
@@ -88,7 +88,7 @@ public class Main {
 		}
 		
 		// Upload new document to the found breakdown element
-		File fileToUpload = new File("u:/HardRock.png");
+		File fileToUpload = new File("../README.md");
 		uploadDocument(token, PROJECT_REPO, projInfo.getProjectModelId(), element.getBkdnElemInfo().getInstanceId(), fileToUpload, userType);
 		
 		element = searchForSensorDataContainer(token, projInfo.getProjectModelId(), PROJECT_REPO, userType);
@@ -211,12 +211,9 @@ public class Main {
 		}
 		System.out.println("\nDownload completed");
 	}
-
+	
 	void uploadDocument(String token, String repoName, String modelName, Long targetNode, File file, String userType) throws ApiException, FileNotFoundException, IOException {
 		DataControllerApi api = new DataControllerApi();
-		/*FileInfo info = api.addFileUsingPOST(file, modelName, targetNode, repoName, token, userType,
-				actTimestamp, app, contentType, "file uploaded during KYKLOS workshop", discipline, editor, isNewIssue,
-				projPhase, resp, rev, revMan, source, status, "workshop document");*/
 		Boolean newIssue = Boolean.FALSE;
 		Long actTimestamp = 0l;
 		DataFileInfoWrapper df = api.addFileUsingPOST(file, modelName, targetNode, repoName, token, userType,
@@ -342,10 +339,18 @@ public class Main {
 	
 	void exportProjectAsDEXPackage(String token, String repoName, String modelName, String filePath) throws ApiException, FileNotFoundException, IOException {
 		ExchangeControllerApi api = new ExchangeControllerApi();
-		FileInfo res = api.exportProjectToFileUsingGET(modelName, modelName, repoName, token);
+		
+		// Export may take long.
+		// We use syncronious requests. So we need to increase timeout values
+		OkHttpClient httpClient = api.getApiClient().getHttpClient();
+		httpClient.setConnectTimeout(600, TimeUnit.SECONDS);
+		httpClient.setReadTimeout(600, TimeUnit.SECONDS);
+		httpClient.setWriteTimeout(600, TimeUnit.SECONDS);
+
+		FileInfo info = api.exportProjectToFileUsingGET(modelName, modelName, repoName, token);
 		
 		DataControllerApi dat = new DataControllerApi();
-		ByteArrayResource arr = dat.getFileDataUsingGET("title", res.getSource(), token);
+		ByteArrayResource arr = dat.getFileDataUsingGET("title", info.getSource(), token);
 		
 		try (FileOutputStream fos = new FileOutputStream(filePath)) {
 			fos.write(arr.getByteArray());
