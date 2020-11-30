@@ -1,6 +1,7 @@
 package com.jotne.epm.trueplm.client;
 
 import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -20,8 +21,11 @@ import com.jotne.demo.api.BreakdownControllerApi;
 import com.jotne.demo.api.DataControllerApi;
 import com.jotne.demo.api.ExchangeControllerApi;
 import com.jotne.demo.model.AggregatedProperty;
+import com.jotne.demo.model.BreakdownElementInfo;
 import com.jotne.demo.model.BreakdownElementSearchResultInfo;
 import com.jotne.demo.model.ByteArrayResource;
+import com.jotne.demo.model.DataFileInfo;
+import com.jotne.demo.model.DataFileInfoWrapper;
 import com.jotne.demo.model.DataFileSearchResultInfo;
 import com.jotne.demo.model.FileInfo;
 import com.jotne.demo.model.LoginInfo;
@@ -35,6 +39,8 @@ public class Main {
 	static final String group = "sdai-group"; // All TruePLM users belong to the same group.
 	
 	static final String PROJECT_REPO = "TruePLMprojectsRep";
+	
+	static final String SERVER_URL = "http://localhost:8080/EDMtruePLM/";
 
 	public static void main(String[] args) {
 		try {
@@ -49,18 +55,28 @@ public class Main {
 		Properties prop = new Properties();
 		InputStream is = getClass().getClassLoader().getResourceAsStream("config.properties");
 		prop.load(is);
+		// Get password from configuration file
+		// Note, actual password is NOT stored in Git
 		String password = prop.getProperty("password");
 		String token = login(loginNane, group, password);
 		
+		// Get user meta-data: name, e-mail, ...
 		LoginInfo userInfo = getUser(token, loginNane);
+		// Type (role) user has in its project
 		String userType = userInfo.getUserProjects().get(0).getUserRegisteredAs().get(0);
 		
+		// Get meta-data on projects available for the user
 		List<UsersProjectInfo> projects = getProjectsForUser(token);
 		if (projects == null || projects.size() == 0)
 			throw new ApiException("No projects found");
 		
 		// Assume use has access to one single project
 		ProjectInfo projInfo = projects.get(0).getInProject();
+		
+		// Search for breakdown element named "D00 / ASD/AIA Bike"
+		// and list its children elements and documents attached to it
+		BreakdownElementSearchResultInfo element =
+				searchForBreakdownElements(token, "D00 / ASD/AIA Bike", projInfo.getProjectModelId(), PROJECT_REPO, userType);
 		
 		// Search documents and print out meta-data for some of them
 		List<DataFileSearchResultInfo> docs =
@@ -71,7 +87,11 @@ public class Main {
 			downloadDocument(token, PROJECT_REPO, projInfo.getProjectModelId(), doc, userType);
 		}
 		
-		BreakdownElementSearchResultInfo element = searchForBreakdownElements(token, projInfo.getProjectModelId(), PROJECT_REPO, userType);
+		// Upload new document to the found breakdown element
+		File fileToUpload = new File("u:/HardRock.png");
+		uploadDocument(token, PROJECT_REPO, projInfo.getProjectModelId(), element.getBkdnElemInfo().getInstanceId(), fileToUpload, userType);
+		
+		element = searchForSensorDataContainer(token, projInfo.getProjectModelId(), PROJECT_REPO, userType);
 		retrieveSensorData(token, PROJECT_REPO, projInfo.getProjectModelId(), element.getBkdnElemInfo().getInstanceId());
 		
 		exportProjectAsDEXPackage(token, "TruePLMprojectsRep", projInfo.getProjectModelId(), "Bike.zip");
@@ -129,7 +149,10 @@ public class Main {
 		if (res != null) {
 			System.out.println("\nAvailable projects:");
 			for (UsersProjectInfo p : res) {
+				System.out.print("Name: ");
 				System.out.println(p.getInProject().getName());
+				System.out.print("Description: ");
+				System.out.println(p.getInProject().getProjectDescr());
 			}
 		}
 		
@@ -188,7 +211,22 @@ public class Main {
 		}
 		System.out.println("\nDownload completed");
 	}
-	
+
+	void uploadDocument(String token, String repoName, String modelName, Long targetNode, File file, String userType) throws ApiException, FileNotFoundException, IOException {
+		DataControllerApi api = new DataControllerApi();
+		/*FileInfo info = api.addFileUsingPOST(file, modelName, targetNode, repoName, token, userType,
+				actTimestamp, app, contentType, "file uploaded during KYKLOS workshop", discipline, editor, isNewIssue,
+				projPhase, resp, rev, revMan, source, status, "workshop document");*/
+		Boolean newIssue = Boolean.FALSE;
+		Long actTimestamp = 0l;
+		DataFileInfoWrapper df = api.addFileUsingPOST(file, modelName, targetNode, repoName, token, userType,
+				actTimestamp, "man", "urn:rdl:epm-std:CAD_file__STEP_AP214_", "file uploaded during KYKLOS workshop", "urn:rdl:epm-std:AOCS", "man", newIssue,
+				"urn:rdl:epm-std:0", "man", "man", "man", "urn:rdl:epm-std:Internal (ESA)", "urn:rdl:epm-std:Approved", file.getName());
+				
+		System.out.println("\nUpload completed");
+		System.out.println("Timestamp: " + df.getUpdatedNodeDate());
+	}
+
 	void printDocument(DataFileSearchResultInfo obj) {
 		System.out.println(obj.getTitle());
 		System.out.print("Type: ");
@@ -197,7 +235,72 @@ public class Main {
 		System.out.println(obj.getLastVersionId());
 	}
 	
-	BreakdownElementSearchResultInfo searchForBreakdownElements(String token, String modelName, String repoName, String userType) throws ApiException {
+	BreakdownElementSearchResultInfo searchForBreakdownElements(String token, String namePattern, String modelName, String repoName, String userType) throws ApiException {
+		BreakdownControllerApi api = new BreakdownControllerApi();
+		long limit = 10;
+		long parentNodeID = 0; // search with no parent specified
+		
+		// First we need to find parent element for all parts
+		// The element named "Bike system"
+		List<BreakdownElementSearchResultInfo> res = api.advancedSearchNodeUsingGET(modelName, repoName, token, userType, null, null, null, "*",
+				null, null, null, limit, parentNodeID, null, null, "Bike system", null, null, null);
+		
+		// There should be one single element found
+		parentNodeID = res.get(0).getBkdnElemInfo().getInstanceId();
+
+		// Now search for required element inside specified parent
+		res = api.advancedSearchNodeUsingGET(modelName, repoName, token, userType, null, null, null, "*",
+				null, null, null, limit, parentNodeID, null, null, namePattern, null, null, null);
+		
+		System.out.println("\nBreakdown elemets found:");
+		for (BreakdownElementSearchResultInfo el : res) {
+			System.out.print("ID: ");
+			System.out.println(el.getBkdnElemInfo().getId());
+			System.out.print("Name: ");
+			System.out.println(el.getBkdnElemInfo().getName());
+			System.out.print("Type: ");
+			System.out.println(el.getBkdnElemInfo().getElementType());
+		}
+		
+		List<BreakdownElementInfo> children = res.get(0).getBkdnElemInfo().getChildren();
+		if (children != null) {
+			System.out.print("\nChildren elements: ");
+			System.out.println(children.size());
+			int idx = 0;
+			for (BreakdownElementInfo el : children) {
+				System.out.print("#");
+				System.out.println(++idx);
+				System.out.print("ID: ");
+				System.out.println(el.getId());
+				System.out.print("Name: ");
+				System.out.println(el.getName());
+				System.out.print("Type: ");
+				System.out.println(el.getElementType());
+			}
+		}
+		
+		List<DataFileInfo> documents = res.get(0).getBkdnElemInfo().getDataContents();
+		if (documents != null ) {
+			System.out.print("\nDocuments: ");
+			System.out.println(documents.size());
+			int idx = 0;
+			for (DataFileInfo dat : documents) {
+				System.out.print("#");
+				System.out.println(++idx);
+				System.out.print("ID: ");
+				System.out.println(dat.getId());
+				System.out.print("Title: ");
+				System.out.println(dat.getTitle());
+				System.out.print("Type: ");
+				System.out.println(dat.getDataType());
+				System.out.print("Updated by: ");
+				System.out.println(dat.getModifiedByUser());			
+			}
+		}
+		return res.get(0);
+	}
+
+	BreakdownElementSearchResultInfo searchForSensorDataContainer(String token, String modelName, String repoName, String userType) throws ApiException {
 		BreakdownControllerApi api = new BreakdownControllerApi();
 		long limit = 10;
 		long nodeID = 0;
