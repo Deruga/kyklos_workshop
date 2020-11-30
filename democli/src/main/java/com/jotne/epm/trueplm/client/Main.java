@@ -1,9 +1,11 @@
 package com.jotne.epm.trueplm.client;
 
+import java.io.BufferedInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -171,13 +173,20 @@ public class Main {
 		DataControllerApi api = new DataControllerApi();
 		FileInfo info = api.getFileVerLinkUsingGET(modelName, "filename", repoName, token, userType, doc.getInstanceId());
 		
-		ByteArrayResource bytes = api.getFileDataUsingGET("filename", info.getSource(), token);
-		
-		try (FileOutputStream fos = new FileOutputStream("filePath.txt")) {
-			fos.write(bytes.getByteArray());
+		// Download file using "low level" way
+		// There is a bug in Swagger code that prevents using "nice looking" code
+		String fileUrl = api.getApiClient().getBasePath() + "/api/dat/file/data/" + info.getSource() + "/filename/" + token;
+		try (BufferedInputStream in = new BufferedInputStream(new URL(fileUrl).openStream());
+				FileOutputStream fileOutputStream = new FileOutputStream(doc.getFileName())) {
+				byte dataBuffer[] = new byte[1024];
+				int bytesRead;
+				while ((bytesRead = in.read(dataBuffer, 0, 1024)) != -1) {
+					fileOutputStream.write(dataBuffer, 0, bytesRead);
+				}
+		} catch (IOException e) {
+			// handle exception
 		}
-		
-		System.out.println("\nExport completed");
+		System.out.println("\nDownload completed");
 	}
 	
 	void printDocument(DataFileSearchResultInfo obj) {
