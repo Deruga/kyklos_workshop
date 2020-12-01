@@ -167,7 +167,8 @@ public class Main {
 		String editor = null; // To find documents edited my current user
 			
 		List<DataFileSearchResultInfo> docs = api.searchDocumentsUsingGET(
-				modelName, PROJECT_REPO, token, userType, null, descriptionPattern, null, null, editor, null, null, null, null, titlePattern);
+				modelName, PROJECT_REPO, token, userType, null, descriptionPattern,
+				null, null, editor, null, null, null, null, titlePattern);
 		
 		if (docs == null || docs.size() == 0) {
 			System.out.println("No documents found");
@@ -194,11 +195,13 @@ public class Main {
 	
 	void downloadDocument(String token, String repoName, String modelName, DataFileSearchResultInfo doc, String userType) throws ApiException, FileNotFoundException, IOException {
 		DataControllerApi api = new DataControllerApi();
-		FileInfo info = api.getFileVerLinkUsingGET(modelName, "filename", repoName, token, userType, doc.getInstanceId());
+		FileInfo info = api.getFileVerLinkUsingGET(modelName, "filename", repoName, token,
+				userType, doc.getInstanceId());
 		
 		// Download file using "low level" way
 		// There is a bug in Swagger code that prevents using "nice looking" code
-		String fileUrl = api.getApiClient().getBasePath() + "/api/dat/file/data/" + info.getSource() + "/filename/" + token;
+		String fileUrl = api.getApiClient().getBasePath() + "/api/dat/file/data/" + info.getSource() +
+				"/filename/" + token;
 		try (BufferedInputStream in = new BufferedInputStream(new URL(fileUrl).openStream());
 				FileOutputStream fileOutputStream = new FileOutputStream(doc.getFileName())) {
 				byte dataBuffer[] = new byte[1024];
@@ -217,8 +220,10 @@ public class Main {
 		Boolean newIssue = Boolean.FALSE;
 		Long actTimestamp = 0l;
 		DataFileInfoWrapper df = api.addFileUsingPOST(file, modelName, targetNode, repoName, token, userType,
-				actTimestamp, "man", "urn:rdl:epm-std:CAD_file__STEP_AP214_", "file uploaded during KYKLOS workshop", "urn:rdl:epm-std:AOCS", "man", newIssue,
-				"urn:rdl:epm-std:0", "man", "man", "man", "urn:rdl:epm-std:Internal (ESA)", "urn:rdl:epm-std:Approved", file.getName());
+				actTimestamp, "man", "urn:rdl:epm-std:CAD_file__STEP_AP214_",
+				"file uploaded during KYKLOS workshop", "urn:rdl:epm-std:AOCS", "man", newIssue,
+				"urn:rdl:epm-std:0", "man", "man", "man", "urn:rdl:epm-std:Internal (ESA)",
+				"urn:rdl:epm-std:Approved", file.getName());
 				
 		System.out.println("\nUpload completed");
 		System.out.println("Timestamp: " + df.getUpdatedNodeDate());
@@ -239,14 +244,16 @@ public class Main {
 		
 		// First we need to find parent element for all parts
 		// The element named "Bike system"
-		List<BreakdownElementSearchResultInfo> res = api.advancedSearchNodeUsingGET(modelName, repoName, token, userType, null, null, null, "*",
+		List<BreakdownElementSearchResultInfo> res = api.advancedSearchNodeUsingGET(
+				modelName, repoName, token, userType, null, null, null, "*",
 				null, null, null, limit, parentNodeID, null, null, "Bike system", null, null, null);
 		
 		// There should be one single element found
 		parentNodeID = res.get(0).getBkdnElemInfo().getInstanceId();
 
 		// Now search for required element inside specified parent
-		res = api.advancedSearchNodeUsingGET(modelName, repoName, token, userType, null, null, null, "*",
+		res = api.advancedSearchNodeUsingGET(
+				modelName, repoName, token, userType, null, null, null, "*",
 				null, null, null, limit, parentNodeID, null, null, namePattern, null, null, null);
 		
 		System.out.println("\nBreakdown elemets found:");
@@ -329,7 +336,8 @@ public class Main {
 		long page = 1; // first page
 		long pageSize = 3; // take just few rows
 		String propertyUri = "urn:rdl:Bike:point list";
-		AggregatedProperty aggrProp = api.getAggrPropUsingGET(modelName, nodeId, propertyUri, repoName, token, from, page, pageSize, to);
+		AggregatedProperty aggrProp = api.getAggrPropUsingGET(modelName, nodeId, propertyUri, repoName,
+				token, from, page, pageSize, to);
 		
 		System.out.println("\nSensor data:");
 		for (String val : aggrProp.getValues()) {
