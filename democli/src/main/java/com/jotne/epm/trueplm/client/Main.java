@@ -37,7 +37,7 @@ import com.squareup.okhttp.OkHttpClient;
 
 public class Main {
 
-	static final String loginNane = "azo@jotne.com";
+	static final String loginName = "azo@jotne.com";
 	static final String group = "sdai-group"; // All TruePLM users belong to the same group.
 	
 	static final String PROJECT_REPO = "TruePLMprojectsRep";
@@ -58,10 +58,10 @@ public class Main {
 		// Get password from configuration file
 		// Note, actual password is NOT stored in Git
 		String password = prop.getProperty("password");
-		String token = login(loginNane, group, password);
+		String token = login(loginName, group, password);
 		
 		// Get user meta-data: name, e-mail, ...
-		LoginInfo userInfo = getUser(token, loginNane);
+		LoginInfo userInfo = getUser(token, loginName);
 		// Type (role) user has in its project
 		String userType = userInfo.getUserProjects().get(0).getUserRegisteredAs().get(0);
 		
@@ -135,7 +135,7 @@ public class Main {
 		
 		System.out.print("User:\t");
 		System.out.println(usr.getUserName());
-		System.out.print("Nnme:\t");
+		System.out.print("Name:\t");
 		System.out.println(usr.getRealName());
 		System.out.print("E-mail:\t");
 		System.out.println(usr.getUserEmail());
