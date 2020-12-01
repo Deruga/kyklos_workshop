@@ -30,6 +30,15 @@ Run java-generate.bat script to generate client stub (***demolib*** library proj
 java-generate.bat
 ```
 
+Note, generated code may have some bugs and be not compilable.
+Therefore some source files is stored in the repository (ApiClient.java and DataControllerApi.java).
+After code generation something shall be reverted.
+
+```javascript
+git checkout demolib/src/main/java/com/jotne/demo/ApiClient.java
+git checkout demolib/src/main/java/com/jotne/demo/api/DataControllerApi.java
+```
+
 4. Go to ***demolib*** folder and build the library project by using ***Maven*** builder
 Note, [Java](https://www.oracle.com/ru/java/technologies/javase-downloads.html) and [Maven](https://maven.apache.org/) must be installed on your system
 
