@@ -41,3 +41,6 @@ mvn package
 5. Project ***democli*** can be imported to apropriate IDE that supports Java development: Eclipse, Neteans, IntelliJ IDEA, etc.
 IDE allows you to debug the client app.
 
+Note, ***democli*** project has configuration file with dummy password stored: [config.properties](democli/src/resources/config.properties).
+Actual user credentials can be provided by request.
+
