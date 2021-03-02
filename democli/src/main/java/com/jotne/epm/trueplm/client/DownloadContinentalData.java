@@ -41,10 +41,12 @@ public class DownloadContinentalData {
 	static final String loginNane = "kyklos_user";
 	static final String group = "sdai-group"; // All TruePLM users belong to the same group.
 	
-	static final String PROJECT_REPO = "Continental";
+	static final String PROJECT_REPO = "TruePLMprojectsRep";
+	static final String PROJECT_NAME = "Continental";
 	
-//	static final String BREAKDOWN_ELEMENT_NAME ="D00 / ASD/AIA Bike";
-	static final String BREAKDOWN_ELEMENT_NAME ="Sensor";
+	static final String BREAKDOWN_ELEMENT_NAME ="24v ok"; // One of many elements with sensor data
+	static final String PROPERTY_URI = "urn:rdl:Continental:Bool sensor data list"; // Different elements may have different property
+
 	
 	public static void main(String[] args) {
 		try {
@@ -77,15 +79,15 @@ public class DownloadContinentalData {
 		
 		projects.stream().findFirst();
 		
-		Optional<UsersProjectInfo> project = projects.stream().filter(p -> p.getInProject().getProjectModelId().equals(PROJECT_REPO)).findAny();
+		Optional<UsersProjectInfo> project = projects.stream().filter(p -> p.getInProject().getProjectModelId().equals(PROJECT_NAME)).findAny();
 
 		if (project.isPresent()) {
 			System.out.println("Found Project");
 			ProjectInfo projInfo = project.get().getInProject();
 		// Search for breakdown element named "D00 / ASD/AIA Bike"
 		// and list its children elements and documents attached to it
-		BreakdownElementSearchResultInfo element =
-				searchForBreakdownElements(token, BREAKDOWN_ELEMENT_NAME, projInfo.getProjectModelId(), PROJECT_REPO, userType);
+//		BreakdownElementSearchResultInfo element =
+//				searchForBreakdownElements(token, BREAKDOWN_ELEMENT_NAME, projInfo.getProjectModelId(), PROJECT_REPO, userType);
 //		
 //	
 //		
@@ -102,13 +104,13 @@ public class DownloadContinentalData {
 //		File fileToUpload = new File("../README.md");
 //		uploadDocument(token, PROJECT_REPO, projInfo.getProjectModelId(), element.getBkdnElemInfo().getInstanceId(), fileToUpload, userType);
 //		
-//		BreakdownElementSearchResultInfo element = searchForSensorDataContainer(token, projInfo.getProjectModelId(), PROJECT_REPO, userType);
-//		retrieveSensorData(token, PROJECT_REPO, projInfo.getProjectModelId(), element.getBkdnElemInfo().getInstanceId());
+		BreakdownElementSearchResultInfo element = searchForSensorDataContainer(token, projInfo.getProjectModelId(), PROJECT_REPO, userType);
+		retrieveSensorData(token, PROJECT_REPO, projInfo.getProjectModelId(), element.getBkdnElemInfo().getInstanceId(), PROPERTY_URI);
 		
 		//exportProjectAsDEXPackage(token, "TruePLMprojectsRep", projInfo.getProjectModelId(), "Bike.zip");
 						
 		}else {
-			System.out.println("Could not found Project '%s'".formatted(PROJECT_REPO));
+			System.out.println(String.format("Could not found Project '%s'", PROJECT_REPO));
 		}
 		logout(token);
 	}
@@ -327,8 +329,8 @@ public class DownloadContinentalData {
 		BreakdownControllerApi api = new BreakdownControllerApi();
 		long limit = 10;
 		long nodeID = 0;
-		String propertyName = "urn:rdl:Bike:serial number";
-		String propertyValue = "13483027";
+		String propertyName = "urn:rdl:Continental:serial number";
+		String propertyValue = "DB100.DBX2.0";
 		List<BreakdownElementSearchResultInfo> res = api.advancedSearchNodeUsingGET(modelName, repoName, token, userType, null, null, null, "*",
 				null, null, null, limit, nodeID, null, null, "*", Arrays.asList(propertyName), Arrays.asList(propertyValue), null);
 		
@@ -344,7 +346,7 @@ public class DownloadContinentalData {
 		return res.get(0);
 	}
 	
-	void retrieveSensorData(String token, String repoName, String modelName, long nodeId) throws ApiException, ParseException {
+	void retrieveSensorData(String token, String repoName, String modelName, long nodeId, String propertyUri) throws ApiException, ParseException {
 		BreakdownControllerApi api = new BreakdownControllerApi();
 		
 		// Quite tricky way to get Unix timestamp from human readable time format 
@@ -354,7 +356,6 @@ public class DownloadContinentalData {
 		
 		long page = 1; // first page
 		long pageSize = 3; // take just few rows
-		String propertyUri = "urn:rdl:Bike:point list";
 		AggregatedProperty aggrProp = api.getAggrPropUsingGET(modelName, nodeId, propertyUri, repoName,
 				token, from, page, pageSize, to);
 		
