@@ -12,6 +12,7 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
@@ -35,16 +36,20 @@ import com.jotne.demo.model.ProjectInfo;
 import com.jotne.demo.model.UsersProjectInfo;
 import com.squareup.okhttp.OkHttpClient;
 
-public class Main {
+public class DownloadContinentalData {
 
-	static final String loginName = "azo@jotne.com";
+	static final String loginNane = "kyklos_user";
 	static final String group = "sdai-group"; // All TruePLM users belong to the same group.
 	
-	static final String PROJECT_REPO = "TruePLMprojectsRep";
+	static final String PROJECT_REPO = "Continental";
+	
+//	static final String BREAKDOWN_ELEMENT_NAME ="D00 / ASD/AIA Bike";
+	static final String BREAKDOWN_ELEMENT_NAME ="Sensor";
 	
 	public static void main(String[] args) {
 		try {
-			new Main().run();
+			//System.out.println("TEST");
+			new DownloadContinentalData().run();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -58,10 +63,10 @@ public class Main {
 		// Get password from configuration file
 		// Note, actual password is NOT stored in Git
 		String password = prop.getProperty("password");
-		String token = login(loginName, group, password);
+		String token = login(loginNane, group, password);
 		
 		// Get user meta-data: name, e-mail, ...
-		LoginInfo userInfo = getUser(token, loginName);
+		LoginInfo userInfo = getUser(token, loginNane);
 		// Type (role) user has in its project
 		String userType = userInfo.getUserProjects().get(0).getUserRegisteredAs().get(0);
 		
@@ -70,32 +75,41 @@ public class Main {
 		if (projects == null || projects.size() == 0)
 			throw new ApiException("No projects found");
 		
-		// Assume use has access to one single project
-		ProjectInfo projInfo = projects.get(0).getInProject();
+		projects.stream().findFirst();
 		
+		Optional<UsersProjectInfo> project = projects.stream().filter(p -> p.getInProject().getProjectModelId().equals(PROJECT_REPO)).findAny();
+
+		if (project.isPresent()) {
+			System.out.println("Found Project");
+			ProjectInfo projInfo = project.get().getInProject();
 		// Search for breakdown element named "D00 / ASD/AIA Bike"
 		// and list its children elements and documents attached to it
 		BreakdownElementSearchResultInfo element =
-				searchForBreakdownElements(token, "D00 / ASD/AIA Bike", projInfo.getProjectModelId(), PROJECT_REPO, userType);
+				searchForBreakdownElements(token, BREAKDOWN_ELEMENT_NAME, projInfo.getProjectModelId(), PROJECT_REPO, userType);
+//		
+//	
+//		
+//		// Search documents and print out meta-data for some of them
+//		List<DataFileSearchResultInfo> docs =
+//				searchForDocuments(token, projInfo.getProjectModelId(), userType);
+//		if (docs != null && docs.size() > 1) {
+//			// download the second one
+//			DataFileSearchResultInfo doc = docs.get(1);
+//			downloadDocument(token, PROJECT_REPO, projInfo.getProjectModelId(), doc, userType);
+//		}
+//		
+//		// Upload new document to the found breakdown element
+//		File fileToUpload = new File("../README.md");
+//		uploadDocument(token, PROJECT_REPO, projInfo.getProjectModelId(), element.getBkdnElemInfo().getInstanceId(), fileToUpload, userType);
+//		
+//		BreakdownElementSearchResultInfo element = searchForSensorDataContainer(token, projInfo.getProjectModelId(), PROJECT_REPO, userType);
+//		retrieveSensorData(token, PROJECT_REPO, projInfo.getProjectModelId(), element.getBkdnElemInfo().getInstanceId());
 		
-		// Search documents and print out meta-data for some of them
-		List<DataFileSearchResultInfo> docs =
-				searchForDocuments(token, projInfo.getProjectModelId(), userType);
-		if (docs != null && docs.size() > 1) {
-			// download the second one
-			DataFileSearchResultInfo doc = docs.get(1);
-			downloadDocument(token, PROJECT_REPO, projInfo.getProjectModelId(), doc, userType);
-		}
-		
-		// Upload new document to the found breakdown element
-		File fileToUpload = new File("../README.md");
-		uploadDocument(token, PROJECT_REPO, projInfo.getProjectModelId(), element.getBkdnElemInfo().getInstanceId(), fileToUpload, userType);
-		
-		element = searchForSensorDataContainer(token, projInfo.getProjectModelId(), PROJECT_REPO, userType);
-		retrieveSensorData(token, PROJECT_REPO, projInfo.getProjectModelId(), element.getBkdnElemInfo().getInstanceId());
-		
-		exportProjectAsDEXPackage(token, "TruePLMprojectsRep", projInfo.getProjectModelId(), "Bike.zip");
+		//exportProjectAsDEXPackage(token, "TruePLMprojectsRep", projInfo.getProjectModelId(), "Bike.zip");
 						
+		}else {
+			System.out.println("Could not found Project '%s'".formatted(PROJECT_REPO));
+		}
 		logout(token);
 	}
 	
@@ -133,19 +147,23 @@ public class Main {
 		List<LoginInfo> res = api.getUserInfoUsingGET(token);
 		LoginInfo usr = res.get(0); 
 		
-		System.out.print("User:\t");
+		/*
+		System.out.print("User:\t"); 
 		System.out.println(usr.getUserName());
 		System.out.print("Name:\t");
 		System.out.println(usr.getRealName());
 		System.out.print("E-mail:\t");
 		System.out.println(usr.getUserEmail());
+		*/
 		return usr; // There should be only one element
 	}
+	
 	
 	List<UsersProjectInfo> getProjectsForUser(String token) throws ApiException {
 		AdminControllerApi api = new AdminControllerApi();
 		List<UsersProjectInfo> res = api.getUserProjectsUsingGET(token);
 		
+		/*
 		if (res != null) {
 			System.out.println("\nAvailable projects:");
 			for (UsersProjectInfo p : res) {
@@ -155,6 +173,7 @@ public class Main {
 				System.out.println(p.getInProject().getProjectDescr());
 			}
 		}
+		*/
 		
 		return res;
 	}
@@ -246,7 +265,7 @@ public class Main {
 		// The element named "Bike system"
 		List<BreakdownElementSearchResultInfo> res = api.advancedSearchNodeUsingGET(
 				modelName, repoName, token, userType, null, null, null, "*",
-				null, null, null, limit, parentNodeID, null, null, "Bike system", null, null, null);
+				null, null, null, limit, parentNodeID, null, null, "Kyklos_Continental Pilot", null, null, null);
 		
 		// There should be one single element found
 		parentNodeID = res.get(0).getBkdnElemInfo().getInstanceId();
@@ -355,7 +374,7 @@ public class Main {
 		httpClient.setReadTimeout(600, TimeUnit.SECONDS);
 		httpClient.setWriteTimeout(600, TimeUnit.SECONDS);
 
-		FileInfo info = api.exportProjectToFileUsingGET(modelName, modelName, repoName, token);
+		FileInfo info = api.exportProjectToPDMUsingGET(modelName, modelName, repoName, token);
 		
 		DataControllerApi dat = new DataControllerApi();
 		ByteArrayResource arr = dat.getFileDataUsingGET("title", info.getSource(), token);
